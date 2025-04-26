@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-logging-deployment
+  namespace: test
+spec:
+  selector:
+    matchLabels:
+      task: nginx-logging
+  template:
+    metadata:
+      labels:
+        task: nginx-logging
+        namespace: test
+    spec:
+      tolerations:
+        - key: "app"
+          value: "web"
+          effect: "NoSchedule"
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/nginx
+        - name: log-agent
+          image: busybox
+          command: ["sh", "-c", "tail -f /var/log/nginx/access.log"]
+          volumeMounts:
+            - name: log-volume
+              mountPath: /var/log/nginx
+      volumes:
+        - name: log-volume
+          emptyDir: {}
